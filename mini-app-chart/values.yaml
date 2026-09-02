@@ -1,0 +1,21 @@
+replicaCount: 2
+
+image:
+  repository: acrtest09new.azurecr.io/mini-app
+  tag: "1.0"
+  pullPolicy: Always
+
+version: v1
+
+service:
+  create: true
+  name: mini-app-svc
+  port: 80
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    cpu: 50m
+    memory: 64Mi

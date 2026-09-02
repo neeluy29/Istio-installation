@@ -1,0 +1,66 @@
+name: Build, Push, and Deploy mini-app (v1 & v2)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag from short SHA
+        id: vars
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to ACR
+        run: az acr login --name acrtest09new
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push v1 image
+        run: docker buildx build --platform linux/amd64 -t acrtest09new.azurecr.io/mini-app:v1-${{ steps.vars.outputs.tag }} --push ./app-v1
+
+      - name: Build and push v2 image
+        run: docker buildx build --platform linux/amd64 -t acrtest09new.azurecr.io/mini-app:v2-${{ steps.vars.outputs.tag }} --push ./app-v2
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Get AKS credentials
+        run: az aks get-credentials --resource-group rg-public-aks --name public-AKS-cluster --overwrite-existing
+
+      - name: Deploy v1 (also creates the shared Service)
+        run: |
+          helm upgrade --install mini-app-v1 ./mini-app-chart -n dev --create-namespace \
+            --set version=v1 \
+            --set image.tag=v1-${{ steps.vars.outputs.tag }} \
+            --set replicaCount=2 \
+            --set service.create=true
+
+      - name: Deploy v2
+        run: |
+          helm upgrade --install mini-app-v2 ./mini-app-chart -n dev \
+            --set version=v2 \
+            --set image.tag=v2-${{ steps.vars.outputs.tag }} \
+            --set replicaCount=1 \
+            --set service.create=false
+
+      - name: Verify v1 rollout
+        run: kubectl rollout status deployment/mini-app-v1 -n dev
+
+      - name: Verify v2 rollout
+        run: kubectl rollout status deployment/mini-app-v2 -n dev
