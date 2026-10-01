@@ -7,6 +7,12 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  ACR_NAME: acrminiappneelu01
+  RESOURCE_GROUP: rg-public-aks
+  AKS_NAME: public-AKS-cluster
+  IMAGE: mini-app
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -26,27 +32,35 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Log in to ACR
-        run: az acr login --name acrtest09new
+        run: az acr login --name ${{ env.ACR_NAME }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push v1 image
-        run: docker buildx build --platform linux/amd64 -t acrtest09new.azurecr.io/mini-app:v1-${{ steps.vars.outputs.tag }} --push ./app-v1
+        run: docker buildx build --platform linux/amd64 -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:v1-${{ steps.vars.outputs.tag }} --push ./app-v1
 
       - name: Build and push v2 image
-        run: docker buildx build --platform linux/amd64 -t acrtest09new.azurecr.io/mini-app:v2-${{ steps.vars.outputs.tag }} --push ./app-v2
+        run: docker buildx build --platform linux/amd64 -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:v2-${{ steps.vars.outputs.tag }} --push ./app-v2
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'latest'
+
       - name: Get AKS credentials
-        run: az aks get-credentials --resource-group rg-public-aks --name public-AKS-cluster --overwrite-existing
+        run: |
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_NAME }} --overwrite-existing
+          kubelogin convert-kubeconfig -l azurecli
 
       - name: Deploy v1 (also creates the shared Service)
         run: |
-          helm upgrade --install mini-app-v1 ./mini-app-chart -n dev --create-namespace \
+          helm upgrade --install mini-app-v1 ./mini-app-chart -n dev \
             --set version=v1 \
+            --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }} \
             --set image.tag=v1-${{ steps.vars.outputs.tag }} \
             --set replicaCount=2 \
             --set service.create=true
@@ -55,12 +69,13 @@ jobs:
         run: |
           helm upgrade --install mini-app-v2 ./mini-app-chart -n dev \
             --set version=v2 \
+            --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }} \
             --set image.tag=v2-${{ steps.vars.outputs.tag }} \
             --set replicaCount=1 \
             --set service.create=false
 
       - name: Verify v1 rollout
-        run: kubectl rollout status deployment/mini-app-v1 -n dev
+        run: kubectl rollout status deployment/mini-app-v1 -n dev --timeout=180s
 
       - name: Verify v2 rollout
-        run: kubectl rollout status deployment/mini-app-v2 -n dev
+        run: kubectl rollout status deployment/mini-app-v2 -n dev --timeout=180s
