@@ -52,7 +52,7 @@ jobs:
           version: v3.16.4          # pinned: --atomic and helm-unittest behave predictably on Helm 3
 
       - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest
+        run:  helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.8.2
 
       - name: Build chart dependencies (mini-db sub-chart)
         run: helm dependency build ./mini-app-chart
