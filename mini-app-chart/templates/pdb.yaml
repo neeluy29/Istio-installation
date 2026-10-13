@@ -1,0 +1,18 @@
+{{- if .Values.pdb.enabled }}
+# One PDB per version: Istio splits traffic by version subset, so each version
+# must keep at least one Ready pod during drains/upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mini-app-{{ .Values.version }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: mini-app
+    version: {{ .Values.version }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: mini-app
+      version: {{ .Values.version }}
+{{- end }}

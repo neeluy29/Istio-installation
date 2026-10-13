@@ -1,0 +1,47 @@
+{{- if .Values.shared.create }}
+{{- $t := .Values.shared.traffic }}
+{{- $host := printf "%s.%s.svc.cluster.local" .Values.service.name .Release.Namespace }}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ $t.virtualServiceName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    {{- toYaml .Values.shared.gateway.hosts | nindent 4 }}
+  gateways:
+    - {{ .Values.shared.gateway.name }}
+  http:
+    {{- if $t.canaryTest.enabled }}
+    - match:
+        - headers:
+            {{ $t.canaryTest.header }}:
+              exact: "true"
+      route:
+        - destination:
+            host: {{ $host }}
+            subset: v2
+      {{- if gt (int $t.canaryTest.faultAbortPercent) 0 }}
+      fault:
+        abort:
+          httpStatus: 500
+          percentage:
+            value: {{ $t.canaryTest.faultAbortPercent }}
+      {{- end }}
+      timeout: {{ $t.timeout }}
+    {{- end }}
+    - route:
+        - destination:
+            host: {{ $host }}
+            subset: v1
+          weight: {{ $t.weights.v1 }}
+        - destination:
+            host: {{ $host }}
+            subset: v2
+          weight: {{ $t.weights.v2 }}
+      retries:
+        attempts: {{ $t.retries.attempts }}
+        perTryTimeout: {{ $t.retries.perTryTimeout }}
+        retryOn: {{ $t.retries.retryOn }}
+      timeout: {{ $t.timeout }}
+{{- end }}

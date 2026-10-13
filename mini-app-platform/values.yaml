@@ -1,0 +1,38 @@
+# Namespace boundary for the dev tenant (owned by the platform, deployed before the app).
+
+resourceQuota:
+  name: dev-quota
+  hard:
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "6"
+    limits.memory: 6Gi
+    pods: "15"
+    services: "5"
+    persistentvolumeclaims: "5"
+    services.loadbalancers: "0"
+
+limitRange:
+  name: dev-limits
+  defaultRequest: { cpu: 50m, memory: 64Mi }
+  default:        { cpu: 200m, memory: 256Mi }
+  min:            { cpu: 10m, memory: 16Mi }    # mini-app requests 10m/16Mi
+  max:            { cpu: "1", memory: 1Gi }     # istio-proxy limit 500m/512Mi fits
+
+networkPolicy:
+  enabled: true
+  dnsNamespace: kube-system
+  istiodNamespace: istio-system
+  istiodPort: 15012
+  ingressGatewayNamespace: istio-ingress
+  monitoringNamespace: monitoring
+  internetEgress:
+    enabled: true
+    exceptCidrs: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+  # Explicitly allowed cross-namespace paths (everything else is denied).
+  allowedPaths:
+    - name: allow-team-b-frontend-to-api
+      fromNamespace: team-b
+      fromPodLabels: { app: frontend }
+      toPodLabels: { app: api }
+      port: 80

@@ -1,0 +1,29 @@
+# --- Secrets: never commit ---
+ServicePrincipal_auth.txt
+smtp-password.txt
+*password*.txt
+*secret*.txt
+
+# --- Debug dumps and logs ---
+envoy-dump*
+*.log
+gateway-*logs*.txt
+*.jsonfindstr
+*Select-String
+gw-*.json
+mesh.json
+syncz.json
+v1-config.json
+stats-before.txt
+canary_results.txt
+patch.json
+
+# --- Local caches / downloaded tools ---
+tmp/
+helm-charts/
+velero/velero-v*/
+velero/velero-blob-backup/
+# --- Assessment additions ---
+KEDA/keda-servicebus-secret.yaml
+rendered-*.yaml
+mini-app-chart/charts/*.tgz

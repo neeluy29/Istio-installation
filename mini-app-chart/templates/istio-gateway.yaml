@@ -1,0 +1,17 @@
+{{- if .Values.shared.create }}
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.shared.gateway.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    {{- toYaml .Values.shared.gateway.selector | nindent 4 }}
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        {{- toYaml .Values.shared.gateway.hosts | nindent 8 }}
+{{- end }}

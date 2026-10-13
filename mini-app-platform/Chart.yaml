@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mini-app-platform
+description: Namespace boundary for the mini-app tenant - ResourceQuota, LimitRange and NetworkPolicies
+version: 0.1.0
+appVersion: "1.0"

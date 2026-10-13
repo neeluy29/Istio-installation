@@ -18,19 +18,40 @@ spec:
         app: mini-app
         version: {{ .Values.version }}
     spec:
+      terminationGracePeriodSeconds: {{ .Values.gracefulShutdown.terminationGracePeriodSeconds }}
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: mini-app
+              version: {{ .Values.version }}
+      {{- end }}
       containers:
         - name: mini-app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 80
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.gracefulShutdown.preStopSleepSeconds }}"]
           readinessProbe:
             httpGet:
-              path: /
+              path: {{ .Values.probes.readiness.path }}
               port: 80
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
           livenessProbe:
             httpGet:
-              path: /
+              path: {{ .Values.probes.liveness.path }}
               port: 80
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

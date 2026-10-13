@@ -1,7 +1,17 @@
-replicaCount: 2
+# ---------------------------------------------------------------------------
+# mini-app chart values
+# The chart is installed twice by the pipeline:
+#   mini-app-v1 : version=v1, service.create=true, shared.create=true, autoscaling.enabled=true
+#   mini-app-v2 : version=v2, service.create=false, shared.create=false
+# Objects that must exist only once (Service, Gateway, VirtualService,
+# DestinationRule, PeerAuthentication, PrometheusRule, dashboard) are gated by
+# service.create / shared.create.
+# ---------------------------------------------------------------------------
+
+replicaCount: 2            # keep >= 2 (PDB minAvailable 1); with KEDA keep = autoscaling.minReplicas
 
 image:
-  repository: acrtest09new.azurecr.io/mini-app
+  repository: acrminiappneelu01.azurecr.io/mini-app
   tag: "1.0"
   pullPolicy: Always
 
@@ -19,3 +29,102 @@ resources:
   limits:
     cpu: 50m
     memory: 64Mi
+
+# --- Resilience -------------------------------------------------------------
+probes:
+  readiness:
+    path: /
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+gracefulShutdown:
+  terminationGracePeriodSeconds: 30
+  preStopSleepSeconds: 5         # let Istio/Service stop routing before the container exits
+
+topologySpread:
+  enabled: true                  # prefer spreading replicas across nodes (never blocks scheduling)
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# --- Autoscaling (KEDA) -------------------------------------------------------
+autoscaling:
+  enabled: false                 # pipeline enables it for v1
+  minReplicas: 2
+  maxReplicas: 5
+  pollingInterval: 15
+  cooldownPeriod: 60
+  serviceBus:
+    enabled: true
+    namespace: sb-mini-app-keda-neelu
+    queueName: mini-app-queue
+    messageCount: "5"
+    authenticationRef: keda-servicebus-auth   # existing TriggerAuthentication (kept out of Git: holds secret refs)
+  prometheus:
+    enabled: true
+    serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+    threshold: "3"               # requests/second per replica
+
+# --- Shared objects (created only by the release with shared.create=true) ----
+shared:
+  create: false
+
+  gateway:
+    name: mini-app-gateway
+    selector:
+      istio: ingressgateway
+    hosts: ["*"]
+
+  traffic:
+    virtualServiceName: mini-app-vs
+    weights:
+      v1: 90
+      v2: 10
+    timeout: 5s
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx,reset,connect-failure
+    # Header-based canary test route (x-canary-test: true -> v2), optional fault injection.
+    canaryTest:
+      enabled: false
+      header: x-canary-test
+      faultAbortPercent: 0       # e.g. 50 to inject HTTP 500s for chaos testing
+
+  destinationRule:
+    name: mini-app-destination
+    circuitBreaker:
+      maxConnections: 10
+      http1MaxPendingRequests: 10
+      maxRequestsPerConnection: 5
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+  mtls:
+    enabled: true
+    name: dev-strict-mtls
+    mode: STRICT
+
+  observability:
+    enabled: true
+    namespace: monitoring                  # where Prometheus/Grafana pick up rules and dashboards
+    prometheusReleaseLabel: kube-prometheus-stack
+    ruleName: mini-app-red
+    alerts:
+      errorRatio: 0.05                     # alert when > 5% of requests are 5xx for 5 min
+      latencyP95Ms: 500                    # alert when p95 latency > 500 ms for 5 min
+    dashboard:
+      enabled: true
+      file: dashboards/mini-app-red.json   # copy of mini-app-red-dashboard.json
+
+mini-db:
+  enabled: false

@@ -1,0 +1,22 @@
+suite: mini-app migration hook tests
+templates:
+  - migration-job.yaml
+tests:
+  - it: should be tagged as a pre-install and post-upgrade Helm hook
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,post-upgrade
+      - exists:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+
+  - it: should run the migration container as a one-shot Job
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: busybox:stable

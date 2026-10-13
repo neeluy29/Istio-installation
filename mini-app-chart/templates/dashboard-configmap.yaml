@@ -1,0 +1,17 @@
+{{- if and .Values.shared.create .Values.shared.observability.enabled .Values.shared.observability.dashboard.enabled }}
+{{- $o := .Values.shared.observability }}
+{{- $json := .Files.Get $o.dashboard.file }}
+{{- if $json }}
+# Grafana's sidecar loads any ConfigMap labelled grafana_dashboard="1".
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mini-app-red-dashboard
+  namespace: {{ $o.namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  mini-app-red.json: |-
+{{ $json | indent 4 }}
+{{- end }}
+{{- end }}

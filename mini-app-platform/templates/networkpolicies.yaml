@@ -1,0 +1,139 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $np := .Values.networkPolicy }}
+{{- $ns := .Release.Namespace }}
+# 1. Deny all ingress and egress for every pod in the namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# 2. Pods in the namespace may talk to each other
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+---
+# 3. DNS lookups to CoreDNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.dnsNamespace }}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# 4. Istio sidecars fetch config/certs from istiod
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istiod-egress
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.istiodNamespace }}
+      ports:
+        - { protocol: TCP, port: {{ $np.istiodPort }} }
+---
+# 5. Istio ingress gateway may reach the app (keeps it publicly reachable)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istio-ingress-gateway
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.ingressGatewayNamespace }}
+---
+# 6. Prometheus may scrape metrics
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.monitoringNamespace }}
+{{- if $np.internetEgress.enabled }}
+---
+# 7. Internet egress (e.g. Azure Service Bus) but not private/in-cluster ranges
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internet-egress
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- toYaml $np.internetEgress.exceptCidrs | nindent 14 }}
+{{- end }}
+{{- range $np.allowedPaths }}
+---
+# Explicitly allowed cross-namespace path: {{ .fromNamespace }} -> {{ $ns }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .name }}
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml .toPodLabels | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .fromNamespace }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .fromPodLabels | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: {{ .port }} }
+{{- end }}
+{{- end }}

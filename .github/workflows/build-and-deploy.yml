@@ -1,4 +1,4 @@
-name: Build, Push, and Deploy mini-app (v1 & v2)
+name: Build, Validate, Deploy and Verify mini-app (v1 & v2)
 
 on:
   workflow_dispatch:
@@ -12,6 +12,7 @@ env:
   RESOURCE_GROUP: rg-public-aks
   AKS_NAME: public-AKS-cluster
   IMAGE: mini-app
+  NAMESPACE: dev
 
 jobs:
   build-and-deploy:
@@ -24,6 +25,7 @@ jobs:
         id: vars
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      # ---------------------------------------------------------------- Build
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -43,9 +45,34 @@ jobs:
       - name: Build and push v2 image
         run: docker buildx build --platform linux/amd64 -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:v2-${{ steps.vars.outputs.tag }} --push ./app-v2
 
+      # ------------------------------------------------------------- Validate
       - name: Set up Helm
         uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4          # pinned: --atomic and helm-unittest behave predictably on Helm 3
 
+      - name: Install helm-unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest
+
+      - name: Build chart dependencies (mini-db sub-chart)
+        run: helm dependency build ./mini-app-chart
+
+      - name: Lint charts
+        run: |
+          helm lint ./mini-app-platform
+          helm lint ./mini-app-chart --set version=v1 --set shared.create=true --set autoscaling.enabled=true
+          helm lint ./mini-app-chart --set version=v2 --set service.create=false
+
+      - name: Unit-test chart
+        run: helm unittest ./mini-app-chart
+
+      - name: Render manifests (dry run)
+        run: |
+          helm template mini-app-platform ./mini-app-platform -n ${{ env.NAMESPACE }} > /dev/null
+          helm template mini-app-v1 ./mini-app-chart -n ${{ env.NAMESPACE }} --set version=v1 --set shared.create=true --set autoscaling.enabled=true > /dev/null
+          helm template mini-app-v2 ./mini-app-chart -n ${{ env.NAMESPACE }} --set version=v2 --set service.create=false > /dev/null
+
+      # --------------------------------------------------------------- Deploy
       - name: Set up kubelogin
         uses: azure/use-kubelogin@v1
         env:
@@ -58,26 +85,62 @@ jobs:
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_NAME }} --overwrite-existing
           kubelogin convert-kubeconfig -l azurecli
 
-      - name: Deploy v1 (also creates the shared Service)
+      - name: Deploy namespace boundary (quota, limits, network policies)
         run: |
-          helm upgrade --install mini-app-v1 ./mini-app-chart -n dev \
+          helm upgrade --install mini-app-platform ./mini-app-platform -n ${{ env.NAMESPACE }} --create-namespace \
+            --atomic --wait --timeout 3m
+
+      - name: Deploy v1 (shared Service, Istio rules, mTLS, KEDA, observability)
+        run: |
+          helm upgrade --install mini-app-v1 ./mini-app-chart -n ${{ env.NAMESPACE }} \
             --set version=v1 \
             --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }} \
             --set image.tag=v1-${{ steps.vars.outputs.tag }} \
             --set replicaCount=2 \
-            --set service.create=true
+            --set service.create=true \
+            --set shared.create=true \
+            --set autoscaling.enabled=true \
+            --atomic --wait --timeout 5m
 
       - name: Deploy v2
         run: |
-          helm upgrade --install mini-app-v2 ./mini-app-chart -n dev \
+          helm upgrade --install mini-app-v2 ./mini-app-chart -n ${{ env.NAMESPACE }} \
             --set version=v2 \
             --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }} \
             --set image.tag=v2-${{ steps.vars.outputs.tag }} \
-            --set replicaCount=1 \
-            --set service.create=false
+            --set replicaCount=2 \
+            --set service.create=false \
+            --set shared.create=false \
+            --atomic --wait --timeout 5m
 
-      - name: Verify v1 rollout
-        run: kubectl rollout status deployment/mini-app-v1 -n dev --timeout=180s
+      - name: Verify rollouts
+        run: |
+          kubectl rollout status deployment/mini-app-v1 -n ${{ env.NAMESPACE }} --timeout=180s
+          kubectl rollout status deployment/mini-app-v2 -n ${{ env.NAMESPACE }} --timeout=180s
+          kubectl get pdb,scaledobject,virtualservice,destinationrule,peerauthentication -n ${{ env.NAMESPACE }}
 
-      - name: Verify v2 rollout
-        run: kubectl rollout status deployment/mini-app-v2 -n dev --timeout=180s
+      # --------------------------------------------------------------- Verify
+      - name: Smoke test - service reachable through the Istio gateway
+        run: |
+          GW_IP=$(kubectl get svc istio-ingressgateway -n istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "Gateway IP: $GW_IP"
+          ok=0
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://$GW_IP/" || echo 000)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && ok=$((ok+1))
+            sleep 2
+          done
+          echo "$ok/10 requests returned 200"
+          [ "$ok" -ge 9 ] || { echo "Smoke test FAILED"; exit 1; }
+
+      - name: Isolation test - other namespaces must not reach the service
+        run: |
+          out=$(kubectl run isolation-test -n default --rm -i --restart=Never --quiet \
+                 --image=curlimages/curl:8.10.1 --command -- \
+                 sh -c 'curl -s -o /dev/null -w "%{http_code}" -m 5 http://mini-app-svc.dev.svc.cluster.local || true' 2>&1 || true)
+          echo "Result from default namespace: '$out'"
+          if echo "$out" | grep -q "200"; then
+            echo "Isolation test FAILED - service reachable from another namespace"; exit 1
+          fi
+          echo "Isolation test passed - request from another namespace was blocked"

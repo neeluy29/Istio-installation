@@ -1,0 +1,59 @@
+{{- if and .Values.shared.create .Values.shared.observability.enabled }}
+{{- $o := .Values.shared.observability }}
+{{- $ns := .Release.Namespace }}
+# RED recording rules + alerts for mini-app (Istio sidecar metrics).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $o.ruleName }}
+  namespace: {{ $o.namespace }}
+  labels:
+    release: {{ $o.prometheusReleaseLabel }}   # required, or Prometheus ignores the rule
+spec:
+  groups:
+    - name: mini-app-red
+      interval: 30s
+      rules:
+        # R - Rate: requests per second, per version
+        - record: mini_app:requests:rate1m
+          expr: |
+            sum by (destination_workload) (
+              rate(istio_requests_total{reporter="destination",destination_workload_namespace="{{ $ns }}"}[1m])
+            )
+        # E - Errors: share of 5xx responses, per version (0 when no errors)
+        - record: mini_app:errors:ratio_rate5m
+          expr: |
+            (
+              sum by (destination_workload) (rate(istio_requests_total{reporter="destination",destination_workload_namespace="{{ $ns }}",response_code=~"5.."}[5m]))
+              /
+              sum by (destination_workload) (rate(istio_requests_total{reporter="destination",destination_workload_namespace="{{ $ns }}"}[5m]))
+            )
+            or
+            (sum by (destination_workload) (rate(istio_requests_total{reporter="destination",destination_workload_namespace="{{ $ns }}"}[5m])) * 0)
+        # D - Duration: p95 latency in ms, per version
+        - record: mini_app:latency_ms:p95_5m
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le, destination_workload) (
+                rate(istio_request_duration_milliseconds_bucket{reporter="destination",destination_workload_namespace="{{ $ns }}"}[5m])
+              )
+            )
+    - name: mini-app-alerts
+      rules:
+        - alert: MiniAppHighErrorRate
+          expr: mini_app:errors:ratio_rate5m > {{ $o.alerts.errorRatio }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "mini-app {{`{{ $labels.destination_workload }}`}} error rate above {{ mulf $o.alerts.errorRatio 100 }}%"
+            description: "5xx ratio is {{`{{ $value | humanizePercentage }}`}} over the last 5 minutes."
+        - alert: MiniAppHighLatencyP95
+          expr: mini_app:latency_ms:p95_5m > {{ $o.alerts.latencyP95Ms }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "mini-app {{`{{ $labels.destination_workload }}`}} p95 latency above {{ $o.alerts.latencyP95Ms }} ms"
+            description: "p95 latency is {{`{{ $value }}`}} ms over the last 5 minutes."
+{{- end }}

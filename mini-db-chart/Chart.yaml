@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mini-db
+description: A tiny placeholder "database" subchart used to demonstrate Helm subchart dependencies
+version: 0.1.0
+appVersion: "1.0"

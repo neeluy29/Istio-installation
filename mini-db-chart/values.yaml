@@ -1,0 +1,10 @@
+replicaCount: 1
+image:
+  repository: redis
+  tag: alpine
+  pullPolicy: IfNotPresent
+resources:
+  requests: {cpu: 10m, memory: 16Mi}
+  limits: {cpu: 30m, memory: 32Mi}
+service:
+  port: 6379

@@ -1,0 +1,732 @@
+{
+  "uid": "mini-app-red",
+  "title": "mini-app RED dashboard",
+  "tags": [
+    "mini-app",
+    "istio",
+    "red"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "templating": {
+    "list": [
+      {
+        "name": "ds_prom",
+        "label": "Prometheus",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "regex": "",
+        "options": []
+      },
+      {
+        "name": "ds_loki",
+        "label": "Loki",
+        "type": "datasource",
+        "query": "loki",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "regex": "",
+        "options": []
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Overview (last 5 minutes)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Request rate",
+      "description": "Requests per second reaching mini-app pods (all versions).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[1m]))",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Success rate",
+      "description": "Share of requests that did not return 5xx. Green at or above the 99.9% availability SLO.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "(sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])) - (sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\",response_code=~\"5..\"}[5m])) or vector(0))) / sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m]))",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Error rate (5xx)",
+      "description": "Share of requests returning 5xx. Orange above 0.1% (the SLO error budget), red above 1%.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "(sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\",response_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m]))",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "p95 latency",
+      "description": "95% of requests completed faster than this. Red at the 250 ms latency SLO threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])))",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 250
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Rate - requests per second",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Request rate by version",
+      "description": "Requests per second received by each deployment.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "sum by (destination_workload) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[1m]))",
+          "legendFormat": "{{destination_workload}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Traffic split (share of requests)",
+      "description": "Share of traffic per version. Should follow the VirtualService weights (about 90% v1 / 10% v2).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "sum by (destination_workload) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])) / ignoring(destination_workload) group_left sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m]))",
+          "legendFormat": "{{destination_workload}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "max": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Errors",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Error rate by version (5xx)",
+      "description": "Share of each version's requests returning 5xx. A bad canary shows up as a rise on one version only.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "(sum by (destination_workload) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\",response_code=~\"5..\"}[1m])) / sum by (destination_workload) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[1m]))) or (sum by (destination_workload) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[1m])) * 0)",
+          "legendFormat": "{{destination_workload}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Requests by response code",
+      "description": "Requests per second grouped by HTTP status code.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "sum by (response_code) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"dev\"}[1m]))",
+          "legendFormat": "HTTP {{response_code}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Duration - latency",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Latency percentiles by version",
+      "description": "p50, p95 and p99 request duration measured by the receiving sidecar.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${ds_prom}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le, destination_workload) (rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])))",
+          "legendFormat": "p50 {{destination_workload}}",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, destination_workload) (rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])))",
+          "legendFormat": "p95 {{destination_workload}}",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${ds_prom}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, destination_workload) (rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\",destination_workload_namespace=\"dev\"}[5m])))",
+          "legendFormat": "p99 {{destination_workload}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Logs - Envoy access logs (Loki)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 15,
+      "type": "logs",
+      "title": "Access logs: istio-proxy in dev",
+      "description": "One line per request. Each includes the x-request-id shown on the matching Jaeger span.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${ds_loki}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${ds_loki}"
+          },
+          "expr": "{namespace=\"dev\", container=\"istio-proxy\"}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      }
+    }
+  ]
+}

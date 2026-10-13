@@ -1,0 +1,6 @@
+dependencies:
+- name: mini-db
+  repository: file://../mini-db-chart
+  version: 0.1.0
+digest: sha256:a9447e3a5b2a03bd82d43da1f7afe8ffe3f257d9baabbd026707b1d90fefc3a7
+generated: "2026-09-02T16:26:42.9123647+05:30"

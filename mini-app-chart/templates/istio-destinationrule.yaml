@@ -1,0 +1,29 @@
+{{- if .Values.shared.create }}
+{{- $cb := .Values.shared.destinationRule.circuitBreaker }}
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ .Values.shared.destinationRule.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ .Values.service.name }}.{{ .Release.Namespace }}.svc.cluster.local
+  trafficPolicy:
+    connectionPool:              # circuit breaker: cap concurrent load per pod
+      tcp:
+        maxConnections: {{ $cb.maxConnections }}
+      http:
+        http1MaxPendingRequests: {{ $cb.http1MaxPendingRequests }}
+        maxRequestsPerConnection: {{ $cb.maxRequestsPerConnection }}
+    outlierDetection:            # eject pods that keep returning 5xx
+      consecutive5xxErrors: {{ $cb.consecutive5xxErrors }}
+      interval: {{ $cb.interval }}
+      baseEjectionTime: {{ $cb.baseEjectionTime }}
+      maxEjectionPercent: {{ $cb.maxEjectionPercent }}
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+{{- end }}

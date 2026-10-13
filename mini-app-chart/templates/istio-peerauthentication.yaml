@@ -1,0 +1,11 @@
+{{- if and .Values.shared.create .Values.shared.mtls.enabled }}
+# Require mutual TLS for all workloads in the namespace (sidecar-to-sidecar only).
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ .Values.shared.mtls.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  mtls:
+    mode: {{ .Values.shared.mtls.mode }}
+{{- end }}

@@ -1,0 +1,55 @@
+suite: mini-app Deployment tests
+templates:
+  - deployment.yaml
+tests:
+  - it: should set replica count from values
+    set:
+      replicaCount: 4
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 4
+
+  - it: should label pods with the configured version
+    set:
+      version: v2
+    asserts:
+      - equal:
+          path: metadata.labels.version
+          value: v2
+      - equal:
+          path: spec.template.metadata.labels.version
+          value: v2
+      - equal:
+          path: spec.selector.matchLabels.version
+          value: v2
+
+  - it: should build the image string from repository and tag
+    set:
+      image.repository: acrtest09new.azurecr.io/mini-app
+      image.tag: v2-abcdef1
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: acrtest09new.azurecr.io/mini-app:v2-abcdef1
+
+  - it: should apply resource requests and limits from values
+    set:
+      resources.requests.cpu: 20m
+      resources.limits.memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 20m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 128Mi
+
+  - it: should define readiness and liveness probes on port 80
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: 80
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: 80

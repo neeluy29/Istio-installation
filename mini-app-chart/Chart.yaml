@@ -3,3 +3,9 @@ name: mini-app
 description: Reusable chart for mini-app, supports multiple versions for Istio traffic splitting
 version: 0.1.0
 appVersion: "1.0"
+
+dependencies:
+  - name: mini-db
+    version: "0.1.0"
+    repository: "file://../mini-db-chart"
+    condition: mini-db.enabled

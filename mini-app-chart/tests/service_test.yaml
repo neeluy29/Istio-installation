@@ -1,0 +1,25 @@
+suite: mini-app Service toggle tests
+templates:
+  - service.yaml
+tests:
+  - it: should render the Service when service.create is true
+    set:
+      service.create: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: mini-app-svc
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+
+  - it: should NOT render the Service when service.create is false
+    set:
+      service.create: false
+    asserts:
+      - hasDocuments:
+          count: 0

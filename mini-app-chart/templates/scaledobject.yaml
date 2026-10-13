@@ -1,0 +1,34 @@
+{{- if .Values.autoscaling.enabled }}
+# KEDA scales on Service Bus queue depth and Istio request rate;
+# it uses whichever trigger asks for more replicas, within min/max.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: mini-app-{{ .Values.version }}-scaledobject
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    name: mini-app-{{ .Values.version }}
+  pollingInterval: {{ .Values.autoscaling.pollingInterval }}
+  cooldownPeriod: {{ .Values.autoscaling.cooldownPeriod }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas }}
+  triggers:
+    {{- if .Values.autoscaling.serviceBus.enabled }}
+    - type: azure-servicebus
+      metadata:
+        namespace: {{ .Values.autoscaling.serviceBus.namespace }}
+        queueName: {{ .Values.autoscaling.serviceBus.queueName }}
+        messageCount: {{ .Values.autoscaling.serviceBus.messageCount | quote }}
+      authenticationRef:
+        name: {{ .Values.autoscaling.serviceBus.authenticationRef }}
+    {{- end }}
+    {{- if .Values.autoscaling.prometheus.enabled }}
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.autoscaling.prometheus.serverAddress }}
+        metricName: mini_app_{{ .Values.version }}_request_rate
+        threshold: {{ .Values.autoscaling.prometheus.threshold | quote }}
+        query: sum(rate(istio_requests_total{destination_workload="mini-app-{{ .Values.version }}", destination_service_namespace="{{ .Release.Namespace }}", reporter="destination"}[1m]))
+    {{- end }}
+{{- end }}
