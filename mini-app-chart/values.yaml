@@ -48,7 +48,8 @@ gracefulShutdown:
   preStopSleepSeconds: 5         # let Istio/Service stop routing before the container exits
 
 topologySpread:
-  enabled: true                  # prefer spreading replicas across nodes (never blocks scheduling)
+  enabled: true 
+  whenUnsatisfiable: DoNotSchedule                  # prefer spreading replicas across nodes (never blocks scheduling)
 
 pdb:
   enabled: true
@@ -66,7 +67,8 @@ autoscaling:
     namespace: sb-mini-app-keda-neelu
     queueName: mini-app-queue
     messageCount: "5"
-    authenticationRef: keda-servicebus-auth   # existing TriggerAuthentication (kept out of Git: holds secret refs)
+    authenticationRef: keda-servicebus-auth
+    identityId: "cda5db4b-cc34-4332-8dba-8d895fa8a584"   # existing TriggerAuthentication (kept out of Git: holds secret refs)
   prometheus:
     enabled: true
     serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
@@ -128,3 +130,5 @@ shared:
 
 mini-db:
   enabled: false
+
+

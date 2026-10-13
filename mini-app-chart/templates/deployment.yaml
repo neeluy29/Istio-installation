@@ -23,7 +23,10 @@ spec:
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: {{ .Values.topologySpread.whenUnsatisfiable | default "ScheduleAnyway" }}
+          nodeTaintsPolicy: Honor          # ignore down/cordoned nodes so recovery and drains are never blocked
+          matchLabelKeys:
+            - pod-template-hash            # count only pods from the same rollout
           labelSelector:
             matchLabels:
               app: mini-app

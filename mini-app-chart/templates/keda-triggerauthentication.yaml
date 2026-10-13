@@ -1,0 +1,12 @@
+{{- if and .Values.autoscaling.enabled .Values.autoscaling.serviceBus.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ .Values.autoscaling.serviceBus.authenticationRef }}
+  labels:
+    app: mini-app
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityId: {{ .Values.autoscaling.serviceBus.identityId | quote }}
+{{- end }}

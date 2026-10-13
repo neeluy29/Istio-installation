@@ -52,7 +52,7 @@ jobs:
           version: v3.16.4          # pinned: --atomic and helm-unittest behave predictably on Helm 3
 
       - name: Install helm-unittest plugin
-        run:  helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.8.2
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.8.2   # pinned: newer releases need Helm 4
 
       - name: Build chart dependencies (mini-db sub-chart)
         run: helm dependency build ./mini-app-chart
@@ -90,6 +90,13 @@ jobs:
           helm upgrade --install mini-app-platform ./mini-app-platform -n ${{ env.NAMESPACE }} --create-namespace \
             --atomic --wait --timeout 3m
 
+      # NEW: labels were added by hand before; now they are re-applied on every run,
+      # so the namespace is fully recoverable even if someone deletes it.
+      - name: Label dev namespace (Istio injection + tenant)
+        run: |
+          kubectl label namespace ${{ env.NAMESPACE }} istio-injection=enabled tenant=dev --overwrite
+          kubectl get namespace ${{ env.NAMESPACE }} --show-labels
+
       - name: Deploy v1 (shared Service, Istio rules, mTLS, KEDA, observability)
         run: |
           helm upgrade --install mini-app-v1 ./mini-app-chart -n ${{ env.NAMESPACE }} \
@@ -118,6 +125,14 @@ jobs:
           kubectl rollout status deployment/mini-app-v1 -n ${{ env.NAMESPACE }} --timeout=180s
           kubectl rollout status deployment/mini-app-v2 -n ${{ env.NAMESPACE }} --timeout=180s
           kubectl get pdb,scaledobject,virtualservice,destinationrule,peerauthentication -n ${{ env.NAMESPACE }}
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=mini-app -o wide
+
+      # NEW: Helm does not check whether KEDA can actually authenticate and scale.
+      # Fail the run if the ScaledObject is not Ready, instead of a silent green.
+      - name: Verify KEDA autoscaling is ready
+        run: |
+          kubectl get triggerauthentication,scaledobject -n ${{ env.NAMESPACE }}
+          kubectl wait scaledobject/mini-app-v1-scaledobject -n ${{ env.NAMESPACE }} --for=condition=Ready --timeout=120s
 
       # --------------------------------------------------------------- Verify
       - name: Smoke test - service reachable through the Istio gateway
