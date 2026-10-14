@@ -13,7 +13,14 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: busybox:stable
+          image: busybox:1.36.1          # pinned (was busybox:stable - a moving tag like latest)
+          resources:                     # required by Gatekeeper policy require-resource-limits
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
           command:
             - sh
             - -c
