@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# Istio ingress gateway – Helm values (chart istio/gateway 1.30.4)
+# All values used at install are kept; tuning adds replicaCount 2 and a spread rule.
+# Why: chaos test C2 (node crash) left BOTH gateway pods on one node (finding F6);
+#      the descheduler evicted one but the scheduler put it back on the same node
+#      because the gateway had no spread rule.
+# Upgrade: helm upgrade istio-ingressgateway istio/gateway -n istio-ingress --version 1.30.4 -f istio-gateway/values.yaml
+# ---------------------------------------------------------------------------
+
+replicaCount: 2                  # was 1 in Helm, scaled to 2 by hand (lifecycle task) – now in code
+
+autoscaling:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-resource-group: rg-public-aks
+    service.beta.kubernetes.io/azure-pip-name: pip-istio-ingress      # keeps the same public IP
+
+# One gateway pod per node (same rule as mini-app)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    nodeTaintsPolicy: Honor          # ignore down/cordoned nodes so recovery is never blocked
+    matchLabelKeys:
+      - pod-template-hash            # count only pods of the same rollout
+    labelSelector:
+      matchLabels:
+        app: istio-ingressgateway
+        istio: ingressgateway
