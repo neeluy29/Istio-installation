@@ -72,7 +72,7 @@ autoscaling:
   prometheus:
     enabled: true
     serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-    threshold: "3"               # requests/second per replica
+    threshold: "10"               # requests/second per replica
 
 # --- Shared objects (created only by the release with shared.create=true) ----
 shared:
