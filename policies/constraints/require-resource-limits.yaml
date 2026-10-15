@@ -1,0 +1,19 @@
+# Constraint: apply K8sRequireResourceLimits to the dev namespace.
+# Start with dryrun (audit only), switch to deny after existing violations are fixed.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireResourceLimits
+metadata:
+  name: require-resource-limits
+spec:
+  enforcementAction: dryrun
+  match:
+    namespaces: ["dev"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+      - apiGroups: ["batch"]
+        kinds: ["Job", "CronJob"]
+  parameters:
+    limits: ["cpu", "memory"]

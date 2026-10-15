@@ -1,0 +1,43 @@
+# ConstraintTemplate: every container must declare resources.limits (cpu, memory).
+# Checks Pods and workload templates (Deployment/StatefulSet/DaemonSet/Job/CronJob).
+# Why workloads too: the dev LimitRange silently adds default limits to Pods, so checking only Pods would never fail.
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequireresourcelimits
+  annotations:
+    description: Requires every container to set resources.limits for the listed resources.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireResourceLimits
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            limits:
+              type: array
+              description: Resources that must have a limit, e.g. ["cpu", "memory"]
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireresourcelimits
+
+        # All containers of a Pod, a workload template (Deployment/StatefulSet/DaemonSet/Job) or a CronJob
+        containers[c] { c := input.review.object.spec.containers[_] }
+        containers[c] { c := input.review.object.spec.initContainers[_] }
+        containers[c] { c := input.review.object.spec.template.spec.containers[_] }
+        containers[c] { c := input.review.object.spec.template.spec.initContainers[_] }
+        containers[c] { c := input.review.object.spec.jobTemplate.spec.template.spec.containers[_] }
+
+        violation[{"msg": msg}] {
+          c := containers[_]
+          r := input.parameters.limits[_]
+          not has_limit(c, r)
+          msg := sprintf("container <%v> has no %v limit - set resources.limits.%v", [c.name, r, r])
+        }
+
+        has_limit(c, r) { c.resources.limits[r] }

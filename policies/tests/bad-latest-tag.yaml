@@ -1,0 +1,19 @@
+# NON-COMPLIANT: image tag "latest" -> must be REJECTED by disallow-latest-tag
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-test-latest-tag
+  namespace: dev
+  labels: { app: policy-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: policy-test, case: latest-tag } }
+  template:
+    metadata: { labels: { app: policy-test, case: latest-tag } }
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }

@@ -1,0 +1,16 @@
+# NON-COMPLIANT: no resources.limits -> must be REJECTED by require-resource-limits
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-test-no-limits
+  namespace: dev
+  labels: { app: policy-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: policy-test, case: no-limits } }
+  template:
+    metadata: { labels: { app: policy-test, case: no-limits } }
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine

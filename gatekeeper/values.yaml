@@ -1,0 +1,14 @@
+replicas: 1                         # webhook/controller pods (default 3)
+
+controllerManager:                  # the "guard" (answers the API server's webhook calls)
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+
+audit:                              # the "inspector" (re-checks objects that already exist)
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+
+auditInterval: 60                   # re-check existing objects every 60 s
+validatingWebhookFailurePolicy: Ignore   # if Gatekeeper is down, requests are allowed

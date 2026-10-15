@@ -1,0 +1,19 @@
+# COMPLIANT: limits set and image pinned -> must be ACCEPTED
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-test-good
+  namespace: dev
+  labels: { app: policy-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: policy-test, case: good } }
+  template:
+    metadata: { labels: { app: policy-test, case: good } }
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }

@@ -1,0 +1,18 @@
+# Constraint: apply K8sDisallowedTags to the dev namespace.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sDisallowedTags
+metadata:
+  name: disallow-latest-tag
+spec:
+  enforcementAction: dryrun
+  match:
+    namespaces: ["dev"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+      - apiGroups: ["batch"]
+        kinds: ["Job", "CronJob"]
+  parameters:
+    tags: ["latest"]
