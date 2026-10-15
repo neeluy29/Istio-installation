@@ -5,7 +5,7 @@ kind: K8sRequireResourceLimits
 metadata:
   name: require-resource-limits
 spec:
-  enforcementAction: dryrun
+  enforcementAction: deny
   match:
     namespaces: ["dev"]
     kinds:
