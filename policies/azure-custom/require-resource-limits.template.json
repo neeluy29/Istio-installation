@@ -1,0 +1,48 @@
+{
+  "mode": "Microsoft.Kubernetes.Data",
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": { "displayName": "Effect", "description": "audit = report only, deny = block, disabled = off" },
+      "allowedValues": [ "audit", "deny", "disabled" ],
+      "defaultValue": "audit"
+    },
+    "namespaces": {
+      "type": "Array",
+      "metadata": { "displayName": "Namespace inclusions", "description": "Namespaces to check, e.g. [\"dev\"]. Empty = all namespaces." },
+      "defaultValue": [ "dev" ]
+    },
+    "excludedNamespaces": {
+      "type": "Array",
+      "metadata": { "displayName": "Namespace exclusions" },
+      "defaultValue": [ "kube-system", "gatekeeper-system", "azure-arc", "azure-extensions-usage-system" ]
+    },
+    "limits": {
+      "type": "Array",
+      "metadata": { "displayName": "Required limits", "description": "Resources every container must limit" },
+      "defaultValue": [ "cpu", "memory" ]
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [ "Microsoft.ContainerService/managedClusters", "Microsoft.Kubernetes/connectedClusters" ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "templateInfo": {
+          "sourceType": "Base64Encoded",
+          "content": "__BASE64__"
+        },
+        "apiGroups": [ "", "apps", "batch" ],
+        "kinds": [ "Pod", "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob" ],
+        "namespaces": "[parameters('namespaces')]",
+        "excludedNamespaces": "[parameters('excludedNamespaces')]",
+        "values": {
+          "limits": "[parameters('limits')]"
+        }
+      }
+    }
+  }
+}

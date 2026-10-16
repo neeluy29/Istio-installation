@@ -1,0 +1,86 @@
+{
+  "mode": "Microsoft.Kubernetes.Data",
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "audit = report only, deny = block, disabled = off"
+      },
+      "allowedValues": [
+        "audit",
+        "deny",
+        "disabled"
+      ],
+      "defaultValue": "audit"
+    },
+    "namespaces": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "Namespace inclusions",
+        "description": "Namespaces to check, e.g. [\"dev\"]. Empty = all namespaces."
+      },
+      "defaultValue": [
+        "dev"
+      ]
+    },
+    "excludedNamespaces": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "Namespace exclusions"
+      },
+      "defaultValue": [
+        "kube-system",
+        "gatekeeper-system",
+        "azure-arc",
+        "azure-extensions-usage-system"
+      ]
+    },
+    "tags": {
+      "type": "Array",
+      "metadata": {
+        "displayName": "Disallowed tags",
+        "description": "Image tags that are not allowed; images without a tag are also rejected"
+      },
+      "defaultValue": [
+        "latest"
+      ]
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [
+        "Microsoft.ContainerService/managedClusters",
+        "Microsoft.Kubernetes/connectedClusters"
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "templateInfo": {
+          "sourceType": "Base64Encoded",
+          "content": "IyBDb25zdHJhaW50VGVtcGxhdGU6IGNvbnRhaW5lciBpbWFnZXMgbXVzdCBiZSBwaW5uZWQgLSBubyBtaXNzaW5nIHRhZyBhbmQgbm8gZGlzYWxsb3dlZCB0YWcgKGUuZy4gbGF0ZXN0KS4NCiMgRGlnZXN0LXBpbm5lZCBpbWFnZXMgKHJlcG9Ac2hhMjU2Oi4uLikgYXJlIGFsbG93ZWQuIFJlZ2lzdHJ5IHBvcnRzIChteXJlZzo1MDAwL2FwcCkgYXJlIG5vdCB0cmVhdGVkIGFzIHRhZ3MuDQphcGlWZXJzaW9uOiB0ZW1wbGF0ZXMuZ2F0ZWtlZXBlci5zaC92MQ0Ka2luZDogQ29uc3RyYWludFRlbXBsYXRlDQptZXRhZGF0YToNCiAgbmFtZTogazhzZGlzYWxsb3dlZHRhZ3MNCiAgYW5ub3RhdGlvbnM6DQogICAgZGVzY3JpcHRpb246IERpc2FsbG93cyBjb250YWluZXIgaW1hZ2VzIHdpdGhvdXQgYSB0YWcgb3Igd2l0aCBhIHRhZyBmcm9tIHRoZSBnaXZlbiBsaXN0Lg0Kc3BlYzoNCiAgY3JkOg0KICAgIHNwZWM6DQogICAgICBuYW1lczoNCiAgICAgICAga2luZDogSzhzRGlzYWxsb3dlZFRhZ3MNCiAgICAgIHZhbGlkYXRpb246DQogICAgICAgIG9wZW5BUElWM1NjaGVtYToNCiAgICAgICAgICB0eXBlOiBvYmplY3QNCiAgICAgICAgICBwcm9wZXJ0aWVzOg0KICAgICAgICAgICAgdGFnczoNCiAgICAgICAgICAgICAgdHlwZTogYXJyYXkNCiAgICAgICAgICAgICAgZGVzY3JpcHRpb246IEltYWdlIHRhZ3MgdGhhdCBhcmUgbm90IGFsbG93ZWQsIGUuZy4gWyJsYXRlc3QiXQ0KICAgICAgICAgICAgICBpdGVtczoNCiAgICAgICAgICAgICAgICB0eXBlOiBzdHJpbmcNCiAgdGFyZ2V0czoNCiAgICAtIHRhcmdldDogYWRtaXNzaW9uLms4cy5nYXRla2VlcGVyLnNoDQogICAgICByZWdvOiB8DQogICAgICAgIHBhY2thZ2UgazhzZGlzYWxsb3dlZHRhZ3MNCg0KICAgICAgICBjb250YWluZXJzW2NdIHsgYyA6PSBpbnB1dC5yZXZpZXcub2JqZWN0LnNwZWMuY29udGFpbmVyc1tfXSB9DQogICAgICAgIGNvbnRhaW5lcnNbY10geyBjIDo9IGlucHV0LnJldmlldy5vYmplY3Quc3BlYy5pbml0Q29udGFpbmVyc1tfXSB9DQogICAgICAgIGNvbnRhaW5lcnNbY10geyBjIDo9IGlucHV0LnJldmlldy5vYmplY3Quc3BlYy50ZW1wbGF0ZS5zcGVjLmNvbnRhaW5lcnNbX10gfQ0KICAgICAgICBjb250YWluZXJzW2NdIHsgYyA6PSBpbnB1dC5yZXZpZXcub2JqZWN0LnNwZWMudGVtcGxhdGUuc3BlYy5pbml0Q29udGFpbmVyc1tfXSB9DQogICAgICAgIGNvbnRhaW5lcnNbY10geyBjIDo9IGlucHV0LnJldmlldy5vYmplY3Quc3BlYy5qb2JUZW1wbGF0ZS5zcGVjLnRlbXBsYXRlLnNwZWMuY29udGFpbmVyc1tfXSB9DQoNCiAgICAgICAgIyBJbWFnZSB3aXRoIG5vIHRhZyBhdCBhbGwgKGUuZy4gIm5naW54Iikgc2lsZW50bHkgbWVhbnMgImxhdGVzdCINCiAgICAgICAgdmlvbGF0aW9uW3sibXNnIjogbXNnfV0gew0KICAgICAgICAgIGMgOj0gY29udGFpbmVyc1tfXQ0KICAgICAgICAgIG5vdCBoYXNfdGFnKGMuaW1hZ2UpDQogICAgICAgICAgbXNnIDo9IHNwcmludGYoImNvbnRhaW5lciA8JXY+IGltYWdlIDwldj4gaGFzIG5vIHRhZyAoZGVmYXVsdHMgdG8gbGF0ZXN0KSAtIHBpbiBhIHZlcnNpb24iLCBbYy5uYW1lLCBjLmltYWdlXSkNCiAgICAgICAgfQ0KDQogICAgICAgICMgSW1hZ2Ugd2l0aCBhIGZvcmJpZGRlbiB0YWcgKGUuZy4gIm5naW54OmxhdGVzdCIpDQogICAgICAgIHZpb2xhdGlvblt7Im1zZyI6IG1zZ31dIHsNCiAgICAgICAgICBjIDo9IGNvbnRhaW5lcnNbX10NCiAgICAgICAgICB0YWcgOj0gaW1hZ2VfdGFnKGMuaW1hZ2UpDQogICAgICAgICAgdGFnID09IGlucHV0LnBhcmFtZXRlcnMudGFnc1tfXQ0KICAgICAgICAgIG1zZyA6PSBzcHJpbnRmKCJjb250YWluZXIgPCV2PiBpbWFnZSA8JXY+IHVzZXMgZGlzYWxsb3dlZCB0YWcgPCV2PiIsIFtjLm5hbWUsIGMuaW1hZ2UsIHRhZ10pDQogICAgICAgIH0NCg0KICAgICAgICAjIERpZ2VzdC1waW5uZWQgaW1hZ2VzIChyZXBvQHNoYTI1NjouLi4pIGNvdW50IGFzIHBpbm5lZA0KICAgICAgICBoYXNfdGFnKGltZykgeyBjb250YWlucyhpbWcsICJAIikgfQ0KDQogICAgICAgIGhhc190YWcoaW1nKSB7DQogICAgICAgICAgbm90IGNvbnRhaW5zKGltZywgIkAiKQ0KICAgICAgICAgIGNvbnRhaW5zKGxhc3Rfc2VnbWVudChpbWcpLCAiOiIpDQogICAgICAgIH0NCg0KICAgICAgICBpbWFnZV90YWcoaW1nKSA9IHRhZyB7DQogICAgICAgICAgbm90IGNvbnRhaW5zKGltZywgIkAiKQ0KICAgICAgICAgIHBhcnRzIDo9IHNwbGl0KGxhc3Rfc2VnbWVudChpbWcpLCAiOiIpDQogICAgICAgICAgY291bnQocGFydHMpID4gMQ0KICAgICAgICAgIHRhZyA6PSBwYXJ0c1tjb3VudChwYXJ0cykgLSAxXQ0KICAgICAgICB9DQoNCiAgICAgICAgIyBMYXN0IHBhdGggc2VnbWVudCwgc28gYSByZWdpc3RyeSBwb3J0ICgibXlyZWc6NTAwMC9hcHAiKSBpcyBub3QgbWlzdGFrZW4gZm9yIGEgdGFnDQogICAgICAgIGxhc3Rfc2VnbWVudChpbWcpID0gcyB7DQogICAgICAgICAgcGFydHMgOj0gc3BsaXQoaW1nLCAiLyIpDQogICAgICAgICAgcyA6PSBwYXJ0c1tjb3VudChwYXJ0cykgLSAxXQ0KICAgICAgICB9"
+        },
+        "apiGroups": [
+          "",
+          "apps",
+          "batch"
+        ],
+        "kinds": [
+          "Pod",
+          "Deployment",
+          "StatefulSet",
+          "DaemonSet",
+          "Job",
+          "CronJob"
+        ],
+        "namespaces": "[parameters('namespaces')]",
+        "excludedNamespaces": "[parameters('excludedNamespaces')]",
+        "values": {
+          "tags": "[parameters('tags')]"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "mode": "Microsoft.Kubernetes.Data",
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": { "displayName": "Effect", "description": "audit = report only, deny = block, disabled = off" },
+      "allowedValues": [ "audit", "deny", "disabled" ],
+      "defaultValue": "audit"
+    },
+    "namespaces": {
+      "type": "Array",
+      "metadata": { "displayName": "Namespace inclusions", "description": "Namespaces to check, e.g. [\"dev\"]. Empty = all namespaces." },
+      "defaultValue": [ "dev" ]
+    },
+    "excludedNamespaces": {
+      "type": "Array",
+      "metadata": { "displayName": "Namespace exclusions" },
+      "defaultValue": [ "kube-system", "gatekeeper-system", "azure-arc", "azure-extensions-usage-system" ]
+    },
+    "limits": {
+      "type": "Array",
+      "metadata": { "displayName": "Required limits", "description": "Resources every container must limit" },
+      "defaultValue": [ "cpu", "memory" ]
+    }
+  },
+  "policyRule": {
+    "if": {
+      "field": "type",
+      "in": [ "Microsoft.ContainerService/managedClusters", "Microsoft.Kubernetes/connectedClusters" ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "templateInfo": {
+          "sourceType": "Base64Encoded",
+          "content": "IyBDb25zdHJhaW50VGVtcGxhdGU6IGV2ZXJ5IGNvbnRhaW5lciBtdXN0IGRlY2xhcmUgcmVzb3VyY2VzLmxpbWl0cyAoY3B1LCBtZW1vcnkpLg0KIyBDaGVja3MgUG9kcyBhbmQgd29ya2xvYWQgdGVtcGxhdGVzIChEZXBsb3ltZW50L1N0YXRlZnVsU2V0L0RhZW1vblNldC9Kb2IvQ3JvbkpvYikuDQojIFdoeSB3b3JrbG9hZHMgdG9vOiB0aGUgZGV2IExpbWl0UmFuZ2Ugc2lsZW50bHkgYWRkcyBkZWZhdWx0IGxpbWl0cyB0byBQb2RzLCBzbyBjaGVja2luZyBvbmx5IFBvZHMgd291bGQgbmV2ZXIgZmFpbC4NCmFwaVZlcnNpb246IHRlbXBsYXRlcy5nYXRla2VlcGVyLnNoL3YxDQpraW5kOiBDb25zdHJhaW50VGVtcGxhdGUNCm1ldGFkYXRhOg0KICBuYW1lOiBrOHNyZXF1aXJlcmVzb3VyY2VsaW1pdHMNCiAgYW5ub3RhdGlvbnM6DQogICAgZGVzY3JpcHRpb246IFJlcXVpcmVzIGV2ZXJ5IGNvbnRhaW5lciB0byBzZXQgcmVzb3VyY2VzLmxpbWl0cyBmb3IgdGhlIGxpc3RlZCByZXNvdXJjZXMuDQpzcGVjOg0KICBjcmQ6DQogICAgc3BlYzoNCiAgICAgIG5hbWVzOg0KICAgICAgICBraW5kOiBLOHNSZXF1aXJlUmVzb3VyY2VMaW1pdHMNCiAgICAgIHZhbGlkYXRpb246DQogICAgICAgIG9wZW5BUElWM1NjaGVtYToNCiAgICAgICAgICB0eXBlOiBvYmplY3QNCiAgICAgICAgICBwcm9wZXJ0aWVzOg0KICAgICAgICAgICAgbGltaXRzOg0KICAgICAgICAgICAgICB0eXBlOiBhcnJheQ0KICAgICAgICAgICAgICBkZXNjcmlwdGlvbjogUmVzb3VyY2VzIHRoYXQgbXVzdCBoYXZlIGEgbGltaXQsIGUuZy4gWyJjcHUiLCAibWVtb3J5Il0NCiAgICAgICAgICAgICAgaXRlbXM6DQogICAgICAgICAgICAgICAgdHlwZTogc3RyaW5nDQogIHRhcmdldHM6DQogICAgLSB0YXJnZXQ6IGFkbWlzc2lvbi5rOHMuZ2F0ZWtlZXBlci5zaA0KICAgICAgcmVnbzogfA0KICAgICAgICBwYWNrYWdlIGs4c3JlcXVpcmVyZXNvdXJjZWxpbWl0cw0KDQogICAgICAgICMgQWxsIGNvbnRhaW5lcnMgb2YgYSBQb2QsIGEgd29ya2xvYWQgdGVtcGxhdGUgKERlcGxveW1lbnQvU3RhdGVmdWxTZXQvRGFlbW9uU2V0L0pvYikgb3IgYSBDcm9uSm9iDQogICAgICAgIGNvbnRhaW5lcnNbY10geyBjIDo9IGlucHV0LnJldmlldy5vYmplY3Quc3BlYy5jb250YWluZXJzW19dIH0NCiAgICAgICAgY29udGFpbmVyc1tjXSB7IGMgOj0gaW5wdXQucmV2aWV3Lm9iamVjdC5zcGVjLmluaXRDb250YWluZXJzW19dIH0NCiAgICAgICAgY29udGFpbmVyc1tjXSB7IGMgOj0gaW5wdXQucmV2aWV3Lm9iamVjdC5zcGVjLnRlbXBsYXRlLnNwZWMuY29udGFpbmVyc1tfXSB9DQogICAgICAgIGNvbnRhaW5lcnNbY10geyBjIDo9IGlucHV0LnJldmlldy5vYmplY3Quc3BlYy50ZW1wbGF0ZS5zcGVjLmluaXRDb250YWluZXJzW19dIH0NCiAgICAgICAgY29udGFpbmVyc1tjXSB7IGMgOj0gaW5wdXQucmV2aWV3Lm9iamVjdC5zcGVjLmpvYlRlbXBsYXRlLnNwZWMudGVtcGxhdGUuc3BlYy5jb250YWluZXJzW19dIH0NCg0KICAgICAgICB2aW9sYXRpb25beyJtc2ciOiBtc2d9XSB7DQogICAgICAgICAgYyA6PSBjb250YWluZXJzW19dDQogICAgICAgICAgciA6PSBpbnB1dC5wYXJhbWV0ZXJzLmxpbWl0c1tfXQ0KICAgICAgICAgIG5vdCBoYXNfbGltaXQoYywgcikNCiAgICAgICAgICBtc2cgOj0gc3ByaW50ZigiY29udGFpbmVyIDwldj4gaGFzIG5vICV2IGxpbWl0IC0gc2V0IHJlc291cmNlcy5saW1pdHMuJXYiLCBbYy5uYW1lLCByLCByXSkNCiAgICAgICAgfQ0KDQogICAgICAgIGhhc19saW1pdChjLCByKSB7IGMucmVzb3VyY2VzLmxpbWl0c1tyXSB9"
+        },
+        "apiGroups": [ "", "apps", "batch" ],
+        "kinds": [ "Pod", "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob" ],
+        "namespaces": "[parameters('namespaces')]",
+        "excludedNamespaces": "[parameters('excludedNamespaces')]",
+        "values": {
+          "limits": "[parameters('limits')]"
+        }
+      }
+    }
+  }
+}
