@@ -1,4 +1,4 @@
-name: Build, Validate, Deploy and Verify mini-app (v1 & v2)
+name: Build + Trivy scan gate (test)
 
 on:
   push:
