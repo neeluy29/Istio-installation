@@ -62,6 +62,7 @@ jobs:
       - name: Trivy scan v1 image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1   # v0.35.0 - verify SHA on releases page
         with:
+          version: v0.75.0 
           image-ref: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:v1-${{ steps.vars.outputs.tag }}
           format: table
           exit-code: '1'
@@ -73,6 +74,7 @@ jobs:
       - name: Trivy scan v2 image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1   # v0.35.0 - verify SHA on releases page
         with:
+          version: v0.75.0 
           image-ref: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:v2-${{ steps.vars.outputs.tag }}
           format: table
           exit-code: '1'
