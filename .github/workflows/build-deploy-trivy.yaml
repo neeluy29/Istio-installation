@@ -3,7 +3,7 @@ name: Build + Trivy scan gate (test)
 on:
   push:
     branches:
-      - feature/trivy-image-scan       # runs automatically when you push to this branch only
+      - feature/month1-final-assessment       # runs automatically when you push to this branch only
   workflow_dispatch:
     inputs:
       deploy:
