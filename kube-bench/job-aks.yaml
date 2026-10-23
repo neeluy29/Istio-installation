@@ -1,0 +1,61 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench
+  namespace: kube-bench                  # own namespace, not "default"
+  labels:
+    app: kube-bench
+spec:
+  backoffLimit: 0                        # don't retry; one run = one report
+  template:
+    metadata:
+      labels:
+        app: kube-bench
+      annotations:
+        sidecar.istio.io/inject: "false" # no Istio sidecar, so the Job can complete
+    spec:
+      serviceAccountName: kube-bench     # NEW: read-only identity (see rbac.yaml) so policy checks can see pods/roles
+      hostPID: true
+      containers:
+        - name: kube-bench
+          image: docker.io/aquasec/kube-bench:v0.16.0   # pinned, not :latest
+          command:
+            ["kube-bench", "run",
+             "--targets", "node,policies,managedservices",
+             "--benchmark", "aks-1.7",
+             "--include-test-output"]    # NEW: show what kube-bench found for each FAIL
+          resources:                     # satisfies the require-resource-limits policy
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-default
+              mountPath: /etc/default
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: var-lib-kubelet
+          hostPath:
+            path: "/var/lib/kubelet"
+        - name: etc-systemd
+          hostPath:
+            path: "/etc/systemd"
+        - name: etc-default
+          hostPath:
+            path: "/etc/default"
+        - name: etc-kubernetes
+          hostPath:
+            path: "/etc/kubernetes"

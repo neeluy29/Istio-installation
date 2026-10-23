@@ -1,0 +1,306 @@
+﻿[INFO] 3 Worker Node Security Configuration
+[INFO] 3.1 Worker Node Configuration Files
+[PASS] 3.1.1 Ensure that the kubeconfig file permissions are set to 644 or more restrictive (Automated)
+[PASS] 3.1.2 Ensure that the kubelet kubeconfig file ownership is set to root:root (Automated)
+[PASS] 3.1.3 Ensure that the azure.json file has permissions set to 644 or more restrictive (Automated)
+[PASS] 3.1.4 Ensure that the azure.json file ownership is set to root:root (Automated)
+[INFO] 3.2 Kubelet
+[PASS] 3.2.1 Ensure that the --anonymous-auth argument is set to false (Automated)
+[PASS] 3.2.2 Ensure that the --authorization-mode argument is not set to AlwaysAllow (Automated)
+[PASS] 3.2.3 Ensure that the --client-ca-file argument is set as appropriate (Automated)
+[PASS] 3.2.4 Ensure that the --read-only-port is secured (Automated)
+[PASS] 3.2.5 Ensure that the --streaming-connection-idle-timeout argument is not set to 0 (Automated)
+[PASS] 3.2.6 Ensure that the --make-iptables-util-chains argument is set to true (Automated) 
+[PASS] 3.2.7 Ensure that the --eventRecordQPS argument is set to 0 or a level which ensures appropriate event capture (Automated)
+[PASS] 3.2.8 Ensure that the --rotate-certificates argument is not set to false (Automated)
+[PASS] 3.2.9 Ensure that the RotateKubeletServerCertificate argument is set to true (Automated)
+
+== Summary node ==
+13 checks PASS
+0 checks FAIL
+0 checks WARN
+0 checks INFO
+
+[INFO] 4 Policies
+[INFO] 4.1 RBAC and Service Accounts
+[FAIL] 4.1.1 Ensure that the cluster-admin role is only used where required (Automated)
+	 FOUND_CLUSTER_ADMIN_BINDING
+	 FOUND_CLUSTER_ADMIN_BINDING
+[FAIL] 4.1.2 Minimize access to secrets (Automated)
+	 SECRETS_ACCESS_FOUND
+[FAIL] 4.1.3 Minimize wildcard use in Roles and ClusterRoles (Automated)
+	 wildcards_present
+[FAIL] 4.1.4 Minimize access to create pods (Automated)
+	 ≡ƒö╣ Roles and ClusterRoles with 'create' access on 'pods':
+	 pods_create_access
+[FAIL] 4.1.5 Ensure that default service accounts are not actively used (Automated)
+	 ≡ƒö╣ Default Service Accounts with automountServiceAccountToken enabled:
+	 default_sa_not_auto_mounted
+	 \n≡ƒö╣ Pods using default ServiceAccount:
+	 default_sa_used_in_pods
+[FAIL] 4.1.6 Ensure that Service Account Tokens are only mounted where necessary (Automated)
+	 ≡ƒö╣ Pods with automountServiceAccountToken enabled:
+	 automountServiceAccountToken
+[INFO] 4.2 Pod Security Policies
+[FAIL] 4.2.1 Minimize the admission of privileged containers (Automated)
+	 PRIVILEGED_FOUND
+[FAIL] 4.2.2 Minimize the admission of containers wishing to share the host process ID namespace (Automated)
+	 HOSTPID_FOUND
+[PASS] 4.2.3 Minimize the admission of containers wishing to share the host IPC namespace (Automated)
+[FAIL] 4.2.4 Minimize the admission of containers wishing to share the host network namespace (Automated)
+	 HOSTNETWORK_FOUND
+[FAIL] 4.2.5 Minimize the admission of containers with allowPrivilegeEscalation (Automated)
+	 ALLOWPRIVILEGEESCALTION_FOUND
+[INFO] 4.4 CNI Plugin
+[WARN] 4.4.1 Ensure latest CNI version is used (Manual)
+[FAIL] 4.4.2 Ensure that all Namespaces have Network Policies defined (Automated)
+	 MISSING_NETWORKPOLICIES
+[INFO] 4.5 Secrets Management
+[FAIL] 4.5.1 Prefer using secrets as files over secrets as environment variables (Automated)
+	 ENV_SECRET_REFERENCES_FOUND
+[WARN] 4.5.2 Consider external secret storage (Manual)
+[INFO] 4.6 General Policies
+[WARN] 4.6.1 Create administrative boundaries between resources using namespaces (Manual)
+[WARN] 4.6.2 Apply Security Context to Your Pods and Containers (Manual)
+[FAIL] 4.6.3 The default namespace should not be used (Automated)
+	 DEFAULT_NAMESPACE_IN_USE
+
+== Remediations policies ==
+4.1.1 Identify all clusterrolebindings to the cluster-admin role using:
+
+  kubectl get clusterrolebindings --no-headers | grep cluster-admin
+
+Review if each of them actually needs this role. If not, remove the binding:
+
+  kubectl delete clusterrolebinding <binding-name>
+
+Where possible, assign a less privileged ClusterRole.
+
+4.1.2 Identify all roles that grant access to secrets via get/list/watch verbs.
+Use `kubectl edit role -n <namespace> <name>` to remove these permissions.
+Alternatively, create a new least-privileged role that excludes secret access.
+
+4.1.3 Identify roles and clusterroles using wildcards (*) in 'verbs', 'resources', or 'apiGroups'.
+Replace wildcards with specific values to enforce least privilege access.
+Use `kubectl edit role -n <namespace> <name>` or `kubectl edit clusterrole <name>` to update.
+
+4.1.4 Review all roles and clusterroles that have "create" permission on "pods".
+
+≡ƒöÆ Where possible, remove or restrict this permission to only required service accounts.
+
+≡ƒ¢á Use:
+  - `kubectl edit role -n <namespace> <role>`
+  - `kubectl edit clusterrole <name>`
+
+Γ£à Apply least privilege principle across the cluster.
+
+4.1.5 1. Avoid using default service accounts for workloads.
+2. Set `automountServiceAccountToken: false` on all default SAs:
+   kubectl patch serviceaccount default -n <namespace> -p '{"automountServiceAccountToken": false}'
+3. Use custom service accounts with only the necessary permissions.
+
+4.1.6 Pods that do not need access to the Kubernetes API should not mount service account tokens.
+
+Γ£à To disable token mounting in a pod definition:
+```yaml
+spec:
+  automountServiceAccountToken: false
+```
+
+Γ£à Or patch an existing pod's spec (recommended via workload template):
+Patch not possible for running pods ΓÇö update the deployment YAML or recreate pods with updated spec.
+
+4.2.1 Add a Pod Security Admission (PSA) policy to each namespace in the cluster to restrict the admission of privileged containers.
+To enforce a restricted policy for a specific namespace, use the following command:
+kubectl label --overwrite ns NAMESPACE pod-security.kubernetes.io/enforce=restricted
+You can also enforce PSA for all namespaces:
+kubectl label --overwrite ns --all pod-security.kubernetes.io/warn=baseline
+Additionally, review the namespaces that should be excluded (e.g., `kube-system`, `gatekeeper-system`, `azure-arc`, `azure-extensions-usage-system`) and adjust your filtering if necessary.
+To enable Pod Security Policies, refer to the detailed documentation for Kubernetes and Azure integration at:
+https://learn.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
+
+4.2.2 Add a policy to each namespace in the cluster that restricts the admission of containers with hostPID. For namespaces that need it, ensure RBAC controls limit access to a specific service account.
+You can label your namespaces as follows to restrict or enforce the policy:
+kubectl label --overwrite ns NAMESPACE pod-security.kubernetes.io/enforce=restricted
+You can also use the following to warn about policies:
+kubectl label --overwrite ns --all pod-security.kubernetes.io/warn=baseline
+For more information, refer to the official Kubernetes and Azure documentation on policies:
+https://learn.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
+
+4.2.4 Add policies to each namespace in the cluster which has user workloads to restrict the admission of hostNetwork containers.
+You can label your namespaces as follows to restrict or enforce the policy:
+kubectl label --overwrite ns NAMESPACE pod-security.kubernetes.io/enforce=restricted
+You can also use the following to warn about policies:
+kubectl label --overwrite ns --all pod-security.kubernetes.io/warn=baseline
+For more information, refer to the official Kubernetes and Azure documentation on policies:
+https://learn.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
+
+4.2.5 Add policies to each namespace in the cluster which has user workloads to restrict the admission of containers with .spec.allowPrivilegeEscalation set to true.
+You can label your namespaces as follows to restrict or enforce the policy:
+kubectl label --overwrite ns NAMESPACE pod-security.kubernetes.io/enforce=restricted
+You can also use the following to warn about policies:
+kubectl label --overwrite ns --all pod-security.kubernetes.io/warn=baseline
+For more information, refer to the official Kubernetes and Azure documentation on policies:
+https://learn.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
+
+4.4.1 Review the documentation of AWS CNI plugin, and ensure latest CNI version is used.
+
+4.4.2 Define at least one NetworkPolicy in each namespace to control pod-level traffic. Example:
+
+kubectl apply -n <namespace> -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+EOF
+
+This denies all traffic unless explicitly allowed. Review and adjust policies per namespace as needed.
+
+4.5.1 Refactor application deployments to mount secrets as files instead of passing them as environment variables.
+Avoid using `envFrom` or `env` with `secretKeyRef` in container specs.
+
+4.5.2 Refer to the secrets management options offered by your cloud provider or a third-party
+secrets management solution.
+
+4.6.1 Follow the documentation and create namespaces for objects in your deployment as you need
+them.
+
+4.6.2 Follow the Kubernetes documentation and apply security contexts to your pods. For a
+suggested list of security contexts, you may refer to the CIS Security Benchmark for Docker
+Containers.
+
+4.6.3 Avoid using the default namespace for user workloads.
+- Create separate namespaces for your applications and infrastructure components.
+- Move any user-defined resources out of the default namespace.
+
+Example to create a namespace:
+kubectl create namespace my-namespace
+
+Example to move resources:
+kubectl get deployment my-app -n default -o yaml | sed 's/namespace: default/namespace: my-namespace/' | kubectl apply -f -
+kubectl delete deployment my-app -n default
+
+
+== Summary policies ==
+1 checks PASS
+13 checks FAIL
+4 checks WARN
+0 checks INFO
+
+[INFO] 5 Managed Services
+[INFO] 5.1 Image Registry and Image Scanning
+[WARN] 5.1.1 Ensure Image Vulnerability Scanning using Microsoft Defender for Cloud (MDC) image scanning or a third party provider (Manual)
+[WARN] 5.1.2 Minimize user access to Azure Container Registry (ACR) (Manual)
+[WARN] 5.1.3 Minimize cluster access to read-only for Azure Container Registry (ACR) (Manual)
+[WARN] 5.1.4 Minimize Container Registries to only those approved (Manual)
+[INFO] 5.2 Access and identity options for Azure Kubernetes Service (AKS)
+[WARN] 5.2.1 Prefer using dedicated AKS Service Accounts (Manual)
+[INFO] 5.3 Key Management Service (KMS)
+[WARN] 5.3.1 Ensure Kubernetes Secrets are encrypted (Manual)
+[INFO] 5.4 Cluster Networking
+[WARN] 5.4.1 Restrict Access to the Control Plane Endpoint (Manual)
+[WARN] 5.4.2 Ensure clusters are created with Private Endpoint Enabled and Public Access Disabled (Manual)
+[WARN] 5.4.3 Ensure clusters are created with Private Nodes (Manual)
+[WARN] 5.4.4 Ensure Network Policy is Enabled and set as appropriate (Manual)
+[WARN] 5.4.5 Encrypt traffic to HTTPS load balancers with TLS certificates (Manual)
+[INFO] 5.5 Authentication and Authorization
+[WARN] 5.5.1 Manage Kubernetes RBAC users with Azure AD (Manual)
+[WARN] 5.5.2 Use Azure RBAC for Kubernetes Authorization (Manual)
+
+== Remediations managedservices ==
+5.1.1 Enable MDC for Container Registries by running the following Azure CLI command:
+az security pricing create --name ContainerRegistry --tier Standard
+Alternatively, use the following command to enable image scanning for your container registry:
+az resource update --ids /subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/Microsoft.ContainerRegistry/registries/{registry-name} --set properties.enabled=true
+Replace `subscription-id`, `resource-group-name`, and `registry-name` with the correct values for your environment.
+Please note that enabling MDC for Container Registries will incur additional costs, so be sure to review the pricing information provided in the Azure documentation before enabling it.
+
+5.1.2 Azure Container Registry
+If you use Azure Container Registry (ACR) as your container image store, you need to grant
+permissions to the service principal for your AKS cluster to read and pull images. Currently,
+the recommended configuration is to use the az aks create or az aks update command to
+integrate with a registry and assign the appropriate role for the service principal. For
+detailed steps, see Authenticate with Azure Container Registry from Azure Kubernetes
+Service.
+To avoid needing an Owner or Azure account administrator role, you can configure a
+service principal manually or use an existing service principal to authenticate ACR from
+AKS. For more information, see ACR authentication with service principals or Authenticate
+from Kubernetes with a pull secret.
+
+5.1.3 No remediation
+5.1.4 If you are using **Azure Container Registry**, you can restrict access using firewall rules as described in the official documentation:
+https://docs.microsoft.com/en-us/azure/container-registry/container-registry-firewall-access-rules
+For other non-AKS repositories, you can use **admission controllers** or **Azure Policy** to enforce registry access restrictions.
+Limiting or locking down egress traffic to specific container registries is also recommended. For more information, refer to:
+https://docs.microsoft.com/en-us/azure/aks/limit-egress-traffic
+
+5.2.1 Azure Active Directory integration
+The security of AKS clusters can be enhanced with the integration of Azure Active Directory
+(AD). Built on decades of enterprise identity management, Azure AD is a multi-tenant,
+cloud-based directory, and identity management service that combines core directory
+services, application access management, and identity protection. With Azure AD, you can
+integrate on-premises identities into AKS clusters to provide a single source for account
+management and security.
+Azure Active Directory integration with AKS clusters
+With Azure AD-integrated AKS clusters, you can grant users or groups access to Kubernetes
+resources within a namespace or across the cluster. To obtain a kubectl configuration
+context, a user can run the az aks get-credentials command. When a user then interacts
+with the AKS cluster with kubectl, they're prompted to sign in with their Azure AD
+credentials. This approach provides a single source for user account management and
+password credentials. The user can only access the resources as defined by the cluster
+administrator.
+Azure AD authentication is provided to AKS clusters with OpenID Connect. OpenID Connect
+is an identity layer built on top of the OAuth 2.0 protocol. For more information on OpenID
+Connect, see the Open ID connect documentation. From inside of the Kubernetes cluster,
+Webhook Token Authentication is used to verify authentication tokens. Webhook token
+authentication is configured and managed as part of the AKS cluster.
+
+5.3.1 No remediation
+5.4.1 By enabling private endpoint access to the Kubernetes API server, all communication between your nodes and the API server stays within your VPC. You can also limit the IP addresses that can access your API server from the internet, or completely disable internet access to the API server.
+With this in mind, you can update your cluster accordingly using the AKS CLI to ensure that Private Endpoint Access is enabled.
+If you choose to also enable Public Endpoint Access then you should also configure a list of allowable CIDR blocks, resulting in restricted access from the internet. If you specify no CIDR blocks, then the public API server endpoint is able to receive and process requests from all IP addresses by defaulting to ['0.0.0.0/0'].
+Example:
+az aks update --name ${CLUSTER_NAME} --resource-group ${RESOURCE_GROUP} --api-server-access-profile enablePrivateCluster=true --api-server-access-profile authorizedIpRanges=192.168.1.0/24
+
+5.4.2 To use a private endpoint, create a new private endpoint in your virtual network, then create a link between your virtual network and a new private DNS zone.
+You can also restrict access to the public endpoint by enabling only specific CIDR blocks to access it. For example:
+az aks update --name ${CLUSTER_NAME} --resource-group ${RESOURCE_GROUP} --api-server-access-profile enablePublicFqdn=false
+This command disables the public API endpoint for your AKS cluster.
+
+5.4.3 To create a private cluster, use the following command:
+az aks create \
+--resource-group <private-cluster-resource-group> \
+--name <private-cluster-name> \
+--load-balancer-sku standard \
+--enable-private-cluster \
+--network-plugin azure \
+--vnet-subnet-id <subnet-id> \
+--docker-bridge-address <docker-bridge-address> \
+--dns-service-ip <dns-service-ip> \
+--service-cidr <service-cidr>
+Ensure that --enable-private-cluster flag is set to enable private nodes in your cluster.
+
+5.4.4 Utilize Calico or another network policy engine to segment and isolate your traffic.
+Enable network policies on your AKS cluster by following the Azure documentation or using the `az aks` CLI to enable the network policy add-on.
+
+5.4.5 No remediation
+5.5.1 No remediation
+5.5.2 No remediation
+
+== Summary managedservices ==
+0 checks PASS
+0 checks FAIL
+13 checks WARN
+0 checks INFO
+
+== Summary total ==
+14 checks PASS
+13 checks FAIL
+17 checks WARN
+0 checks INFO
+
